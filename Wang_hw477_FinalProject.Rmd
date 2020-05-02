@@ -29,6 +29,7 @@ library(choroplethr)
 library(choroplethrMaps)
 library(sf)
 library(scales)   # for percent()
+library(dbplyr)
 ```
 
 ## Covid-19
@@ -151,7 +152,7 @@ education <- education_raw %>%
 names(education) <- c("state","education")
 
 # lower the state col
-education$State <- tolower(education$State)
+education$state <- tolower(education$state)
 
 names(education) <- c("region","value")
 head(education)
@@ -184,6 +185,10 @@ pop_density$density <- as.numeric(gsub(",", "", pop_density$density))
 # change state name to lower letter
 pop_density$state <- tolower(pop_density$state)
 
+# check density
+pop_density_check <- pop_density %>%
+  mutate(den = pop_density$population/pop_density$land)
+
 head(pop_density)
 ```
 
@@ -196,10 +201,34 @@ GDP_raw <- "https://en.wikipedia.org/wiki/List_of_U.S._states_and_territories_by
   html_table(fill=TRUE) %>%
   .[[3]]
 GDP_raw
+
+# change cols name 
+names(GDP_raw) <- c("rank","state","Q4_2019","GDP_portion","GDP_perCapita","area")
+
+# select the needed cols
+GDP <- GDP_raw %>%
+  select(state,Q4_2019,GDP_portion,GDP_perCapita,area)
+
+# delete the comma and numerical the colums
+GDP$Q4_2019 <- as.numeric(gsub(",", "", GDP$Q4_2019))
+GDP$GDP_portion <- as.numeric(GDP$GDP_portion)
+GDP$GDP_perCapita <- as.numeric(gsub(",", "", GDP$GDP_perCapita))
+
+# change state name to lower letter
+GDP$state <- tolower(GDP$state)
+
+head(GDP)
 ```
 
 ## Full Table
 
 ```{r}
-political <- rbind(first_two,others) %>%
+# political <- rbind(first_two,others) %>%
+
+df4 <- sqldf("SELECT CustomerId, Product, State 
+              FROM df1
+              LEFT JOIN df2 USING(CustomerID)")
+
+library
+merge(x = COVID_19_full, y = political, by =state, all.x = TRUE)
 ```
