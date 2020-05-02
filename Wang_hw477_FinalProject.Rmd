@@ -44,11 +44,11 @@ COVID_19_raw <- "https://www.worldometers.info/coronavirus/country/us/" %>%
 # extract the rows and columns needed
 COVID_19_full <- data.frame(COVID_19_raw)
 COVID_19_full <- COVID_19_full[-c(1,53:nrow(COVID_19_full)),]
-colnames(COVID_19_full)
+# colnames(COVID_19_full)
 COVID_19_full <- COVID_19_full %>%
   dplyr::select(USAState, TotalCases, TotalDeaths,Tot.Cases.1M.pop,Deaths.1M.pop,Tests.1M.pop) %>%
   arrange(USAState)
-# head(COVID_19_full)
+head(COVID_19_full)
 
 # total cases
 total_cases <- COVID_19_full %>%
@@ -58,7 +58,7 @@ total_cases <- COVID_19_full %>%
 names(total_cases) <- c("region", "value")
 # change state name to lower letter
 total_cases$region <- tolower(total_cases$region)
-total_cases$region
+# total_cases$region
 # remove comma from value
 total_cases$value <- as.numeric(gsub(",", "", total_cases$value))
 
@@ -90,9 +90,9 @@ grid.arrange(state_choropleth(total_cases, title  = "Covid-19 toal cases in the 
 political_raw <- "https://www.nytimes.com/elections/2016/results/president" %>%
   read_html() %>%
   html_table(fill=TRUE)
-# political_raw
+political_raw
 
-# clean table 1 and 2
+# clean table 1 and 2 by extracting the digit numbers and then divided by 100
 first_two <- rbind(political_raw[[1]],political_raw[[2]]) %>%
   dplyr::select(State,Clinton,Trump,Other) %>%
   mutate(Democratic = as.numeric(gsub("[^0-9]","",Clinton))/100) %>%
@@ -100,8 +100,10 @@ first_two <- rbind(political_raw[[1]],political_raw[[2]]) %>%
   mutate(Other = as.numeric(gsub("[^0-9]","",Other))/100) %>%
   dplyr::select(State,Democratic,Republic,Other)
 
-#Democratic = percent(as.numeric(gsub("[^0-9]","",Clinton))/100)
+# tried the following, but it's not numueric anymore
+# Democratic = percent(as.numeric(gsub("[^0-9]","",Clinton))/100)
 
+# combine table 3 to 7, clean by extracting the digit numbers and then divided by 100
 others <- rbind(political_raw[[3]],political_raw[[4]],political_raw[[5]],political_raw[[6]],political_raw[[7]]) %>%
   dplyr::select(State,Dem.,Rep.,Oth.) %>%
   mutate(Democratic = as.numeric(gsub("[^0-9]","",Dem.))/100) %>%
@@ -109,22 +111,22 @@ others <- rbind(political_raw[[3]],political_raw[[4]],political_raw[[5]],politic
   mutate(Other = as.numeric(gsub("[^0-9]","",Oth.))/100) %>%
   dplyr::select(State,Democratic,Republic,Other)
   
-# sum = Democratic+Republic+Other is not 1 actually
+# sum = Democratic+Republic+Other is not 1 actually, checked true
 
+# add the region names by hand, pay attendsion on such as district of colunmbia which in short is D.C. and stand after delaware, stand in front of it.
 political <- rbind(first_two,others) %>%
   arrange(State) %>%
   unique() %>% 
-  mutate(region = c("alabama","alaska","arizona","arkansas","california","colorado","connecticut","district of columbia","delaware","florida","georgia","hawaii","idaho","illinois","indiana","iowa","kansas","kentucky","louisiana","massachusetts","maryland","maine","michigan","minnesota","mississippi","missouri","montana","north carolina","north dakota","new hampshire","new jersey","new mexico","new york","nebraska","nevada","ohio","oklahoma","oregon","pennsylvania","rhode island","south carolina","south dakota","tennessee","texas","utah","virginia","vermont","west virginia","washington","wisconsin","wyoming"))
-  
-# add the region names by hand, pay attendsion on such as district of colunmbia which in short is D.C. and stand after delaware, stand in front of it.
+  mutate(state = c("alabama","alaska","arizona","arkansas","california","colorado","connecticut","district of columbia","delaware","florida","georgia","hawaii","idaho","illinois","indiana","iowa","kansas","kentucky","louisiana","massachusetts","maryland","maine","michigan","minnesota","mississippi","missouri","montana","north carolina","north dakota","new hampshire","new jersey","new mexico","new york","nebraska","nevada","ohio","oklahoma","oregon","pennsylvania","rhode island","south carolina","south dakota","tennessee","texas","utah","virginia","vermont","west virginia","washington","wisconsin","wyoming"))
 
 Dem <- political %>%
-  select(region,Democratic)
+  select(state,Democratic)
 names(Dem) <- c("region","value")
 Rep <- political %>%
-  select(region,Republic)
+  select(state,Republic)
 names(Rep) <- c("region","value")
 
+# create two side-by-side choropleth maps of political standing in the USA in 2016 
 data(continental_us_states)
 grid.arrange(state_choropleth(Dem, title  = "Democratic Support in 2016", zoom = continental_us_states),
              state_choropleth(Rep, title  = "Republic Support in 2016", zoom = continental_us_states))
@@ -139,13 +141,22 @@ education_raw <- "https://worldpopulationreview.com/states/most-educated-states/
   html_table(fill=TRUE) %>%
   .[[1]]
 
+head(education_raw)   # already clean enough
+
+# select the needed col
 education <- education_raw %>%
   select(State,`Education Score`)
 
+# change the clo names
+names(education) <- c("state","education")
+
+# lower the state col
 education$State <- tolower(education$State)
+
 names(education) <- c("region","value")
 head(education)
 
+# create a side-by-side choropleth map of education level in the USA
 grid.arrange(state_choropleth(education, title  = "Education Level in US", zoom = continental_us_states))
 ```
 
@@ -157,16 +168,23 @@ pop_density_raw <- "https://simple.wikipedia.org/wiki/List_of_U.S._states_by_pop
   read_html() %>%
   html_table(fill=TRUE) %>%
   .[[4]]
+pop_density_raw
 
 pop_density <- pop_density_raw %>%
-  select(`State/Territory/Division/Region`,`Dens./sqmi`)
+  select(`State/Territory/Division/Region`,`2013 estimatedpopulation`,`Land area(sqmi)`,`Population/sqmi`)
 
-names(pop_density) <- c("region","value")
-pop_density$region <- tolower(pop_density$region)
+# change column name 
+names(pop_density) <- c("state","population","land","density")
+
+# delete the comma and numerical the colums
+pop_density$population <- as.numeric(gsub(",", "", pop_density$population))
+pop_density$land <- as.numeric(gsub(",", "", pop_density$land))
+pop_density$density <- as.numeric(gsub(",", "", pop_density$density))
+
+# change state name to lower letter
+pop_density$state <- tolower(pop_density$state)
 
 head(pop_density)
-
-grid.arrange(state_choropleth(pop_density, title  = "Education Level in US", zoom = continental_us_states))
 ```
 
 ## GDP
@@ -178,4 +196,10 @@ GDP_raw <- "https://en.wikipedia.org/wiki/List_of_U.S._states_and_territories_by
   html_table(fill=TRUE) %>%
   .[[3]]
 GDP_raw
+```
+
+## Full Table
+
+```{r}
+political <- rbind(first_two,others) %>%
 ```
