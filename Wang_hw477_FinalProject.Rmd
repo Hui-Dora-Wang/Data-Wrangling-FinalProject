@@ -29,7 +29,6 @@ library(choroplethr)
 library(choroplethrMaps)
 library(sf)
 library(scales)   # for percent()
-library(dbplyr)
 ```
 
 ## Covid-19
@@ -40,48 +39,55 @@ COVID_19_raw <- "https://www.worldometers.info/coronavirus/country/us/" %>%
   read_html() %>%
   html_table(fill=TRUE) %>%
   .[[1]]
-# head(COVID_19_raw)
+head(COVID_19_raw)
 
-# extract the rows and columns needed
+# colnames(COVID_19_full)
+
+# select the rows and columns needed
 COVID_19_full <- data.frame(COVID_19_raw)
 COVID_19_full <- COVID_19_full[-c(1,53:nrow(COVID_19_full)),]
-# colnames(COVID_19_full)
 COVID_19_full <- COVID_19_full %>%
   dplyr::select(USAState, TotalCases, TotalDeaths,Tot.Cases.1M.pop,Deaths.1M.pop,Tests.1M.pop) %>%
   arrange(USAState)
-head(COVID_19_full)
 
-# total cases
-total_cases <- COVID_19_full %>%
-  dplyr::select(USAState, TotalCases)
-# match with choroplethr package
-# change column name 
-names(total_cases) <- c("region", "value")
-# change state name to lower letter
-total_cases$region <- tolower(total_cases$region)
-# total_cases$region
-# remove comma from value
-total_cases$value <- as.numeric(gsub(",", "", total_cases$value))
+# rename the columns
+names(COVID_19_full) <-  c("state","TotalCases","TotalDeaths","Cases.1M.pop","Deaths.1M.pop","Tests.1M.pop")
 
-# total deaths
-total_deaths <- COVID_19_full %>%
-  dplyr::select(USAState, TotalDeaths)
-## match with choroplethr package
-# change column name 
-names(total_deaths) <- c("region", "value")
 # change state name to lower letter
-total_deaths$region <- tolower(total_deaths$region)
-# remove comma from value
-total_deaths$value <- as.numeric(gsub(",", "", total_deaths$value))
+COVID_19_full$state <- tolower(COVID_19_full$state)
+
+# remove comma and numerical
+COVID_19_full$TotalCases <- as.numeric(gsub(",", "", COVID_19_full$TotalCases))
+COVID_19_full$TotalDeaths <- as.numeric(gsub(",", "", COVID_19_full$TotalDeaths))
+COVID_19_full$Cases.1M.pop <- as.numeric(gsub(",", "", COVID_19_full$Cases.1M.pop))
+COVID_19_full$Deaths.1M.pop <- as.numeric(gsub(",", "", COVID_19_full$Deaths.1M.pop))
+COVID_19_full$Tests.1M.pop <- as.numeric(gsub(",", "", COVID_19_full$Tests.1M.pop))
+
 # fill NA with 0
-total_deaths$value <- replace_na(total_deaths$value, 0)
+COVID_19_full$TotalDeaths <- replace_na(COVID_19_full$TotalDeaths, 0)
+
+head(COVID_19_full)
 ```
 
 ```{r Covid_19 Map}
+# total cases
+total_cases <- COVID_19_full %>%
+  dplyr::select(state, TotalCases)
+# match with choroplethr package
+# change column name 
+names(total_cases) <- c("region", "value")
+
+# total deaths
+total_deaths <- COVID_19_full %>%
+  dplyr::select(state, TotalDeaths)
+## match with choroplethr package
+# change column name 
+names(total_deaths) <- c("region", "value")
+
 # create two side-by-side choropleth maps of COVID-19 cases and deaths in the USA
 data(continental_us_states)
-grid.arrange(state_choropleth(total_cases, title  = "Covid-19 toal cases in the US", zoom = continental_us_states),
-             state_choropleth(total_deaths, title  = "Covid-19 toal deaths in the US", zoom = continental_us_states))
+grid.arrange(state_choropleth(total_cases, title  = "Covid-19 total cases in the US", zoom = continental_us_states),
+             state_choropleth(total_deaths, title  = "Covid-19 total deaths in the US", zoom = continental_us_states))
 ```
 
 ## Political Standing
@@ -91,40 +97,85 @@ grid.arrange(state_choropleth(total_cases, title  = "Covid-19 toal cases in the 
 political_raw <- "https://www.nytimes.com/elections/2016/results/president" %>%
   read_html() %>%
   html_table(fill=TRUE)
-political_raw
+head(political_raw)
 
-# clean table 1 and 2 by extracting the digit numbers and then divided by 100
+# combine table 1 and 2, and select the columns
 first_two <- rbind(political_raw[[1]],political_raw[[2]]) %>%
-  dplyr::select(State,Clinton,Trump,Other) %>%
-  mutate(Democratic = as.numeric(gsub("[^0-9]","",Clinton))/100) %>%
-  mutate(Republic = as.numeric(gsub("[^0-9]","",Trump))/100) %>%
-  mutate(Other = as.numeric(gsub("[^0-9]","",Other))/100) %>%
-  dplyr::select(State,Democratic,Republic,Other)
+  dplyr::select(State,Clinton,Trump,Other) 
 
-# tried the following, but it's not numueric anymore
-# Democratic = percent(as.numeric(gsub("[^0-9]","",Clinton))/100)
+# extracting the digit numbers and then divided by 100
+first_two$Clinton <- as.numeric(gsub("[^0-9]","",first_two$Clinton))/100
+first_two$Trump <- as.numeric(gsub("[^0-9]","",first_two$Trump))/100
+first_two$Other <- as.numeric(gsub("[^0-9]","",first_two$Other))/100
 
-# combine table 3 to 7, clean by extracting the digit numbers and then divided by 100
+# combine table 3 to 7, and select the colums and rename
 others <- rbind(political_raw[[3]],political_raw[[4]],political_raw[[5]],political_raw[[6]],political_raw[[7]]) %>%
-  dplyr::select(State,Dem.,Rep.,Oth.) %>%
-  mutate(Democratic = as.numeric(gsub("[^0-9]","",Dem.))/100) %>%
-  mutate(Republic = as.numeric(gsub("[^0-9]","",Rep.))/100) %>%
-  mutate(Other = as.numeric(gsub("[^0-9]","",Oth.))/100) %>%
-  dplyr::select(State,Democratic,Republic,Other)
-  
-# sum = Democratic+Republic+Other is not 1 actually, checked true
+  dplyr::select(State,Dem.,Rep.,Oth.)
+colnames(others) <- c("State","Clinton","Trump","Other")
+
+# extracting the digit numbers and then divided by 100
+others$Clinton <- as.numeric(gsub("[^0-9]","",others$Clinton))/100
+others$Trump <- as.numeric(gsub("[^0-9]","",others$Trump))/100
+others$Other <- as.numeric(gsub("[^0-9]","",others$Other))/100
 
 # add the region names by hand, pay attendsion on such as district of colunmbia which in short is D.C. and stand after delaware, stand in front of it.
 political <- rbind(first_two,others) %>%
   arrange(State) %>%
   unique() %>% 
-  mutate(state = c("alabama","alaska","arizona","arkansas","california","colorado","connecticut","district of columbia","delaware","florida","georgia","hawaii","idaho","illinois","indiana","iowa","kansas","kentucky","louisiana","massachusetts","maryland","maine","michigan","minnesota","mississippi","missouri","montana","north carolina","north dakota","new hampshire","new jersey","new mexico","new york","nebraska","nevada","ohio","oklahoma","oregon","pennsylvania","rhode island","south carolina","south dakota","tennessee","texas","utah","virginia","vermont","west virginia","washington","wisconsin","wyoming"))
+  mutate(state = c("alabama","alaska","arizona","arkansas","california","colorado","connecticut","district of columbia","delaware","florida","georgia","hawaii","idaho","illinois","indiana","iowa","kansas","kentucky","louisiana","massachusetts","maryland","maine","michigan","minnesota","mississippi","missouri","montana","north carolina","north dakota","new hampshire","new jersey","new mexico","new york","nebraska","nevada","ohio","oklahoma","oregon","pennsylvania","rhode island","south carolina","south dakota","tennessee","texas","utah","virginia","vermont","west virginia","washington","wisconsin","wyoming")) %>%
+  select(state,Clinton,Trump,Other) %>%
+  arrange(state)
 
+colnames(political) <- c("state","Clinton","Trump","Other_poli")
+
+# tried the following, but it's not numueric anymore
+# Democratic = percent(as.numeric(gsub("[^0-9]","",Clinton))/100)
+
+# sum = Clinton+Trump+Other_poli is not 1 actually, checked true
+
+head(political)
+```
+
+```{r Political Standing}
+# import the data
+political_raw2 <- "https://www.nytimes.com/elections/2016/results/president" %>%
+  read_html() %>%
+  html_table(fill=TRUE) %>%
+  .[[2]]
+head(political_raw2)
+
+# select the needed columns
+# add the region names by hand, pay attendsion on such as district of colunmbia which in short is D.C. and stand after delaware, stand in front of it.
+political2 <- political_raw2 %>%
+  select(State,Clinton,Trump,Other) %>%
+  arrange(State) %>%
+  unique() %>% 
+  mutate(state = c("alabama","alaska","arizona","arkansas","california","colorado","connecticut","district of columbia","delaware","florida","georgia","hawaii","idaho","illinois","indiana","iowa","kansas","kentucky","louisiana","massachusetts","maryland","maine","michigan","minnesota","mississippi","missouri","montana","north carolina","north dakota","new hampshire","new jersey","new mexico","new york","nebraska","nevada","ohio","oklahoma","oregon","pennsylvania","rhode island","south carolina","south dakota","tennessee","texas","utah","virginia","vermont","west virginia","washington","wisconsin","wyoming")) %>%
+  select(state,Clinton,Trump,Other)
+
+# extracting the digit numbers and then divided by 100
+political2$Clinton <- as.numeric(gsub("[^0-9]","",political2$Clinton))/100
+political2$Trump <- as.numeric(gsub("[^0-9]","",political2$Trump))/100
+political2$Other <- as.numeric(gsub("[^0-9]","",political2$Other))/100
+
+# change the columns' names
+colnames(political) <- c("state","Clinton","Trump","Other_poli")
+
+# tried the following, but it's not numueric anymore
+# percent(as.numeric(gsub("[^0-9]","",Clinton))/100)
+
+# sum = Clinton+Trump+Other_poli is not 1 actually, checked true
+
+head(political2)
+```
+
+
+```{r Political Map}
 Dem <- political %>%
-  select(state,Democratic)
+  select(state,Clinton)
 names(Dem) <- c("region","value")
 Rep <- political %>%
-  select(state,Republic)
+  select(state,Trump)
 names(Rep) <- c("region","value")
 
 # create two side-by-side choropleth maps of political standing in the USA in 2016 
@@ -146,19 +197,24 @@ head(education_raw)   # already clean enough
 
 # select the needed col
 education <- education_raw %>%
-  select(State,`Education Score`)
+  select(State,`Education Score`) %>%
+  arrange(State)
 
 # change the clo names
-names(education) <- c("state","education")
+names(education) <- c("state","Education")
 
 # lower the state col
 education$state <- tolower(education$state)
 
-names(education) <- c("region","value")
 head(education)
+```
+
+```{r Education Map}
+# names(education) <- c("region","value")
+# head(education)
 
 # create a side-by-side choropleth map of education level in the USA
-grid.arrange(state_choropleth(education, title  = "Education Level in US", zoom = continental_us_states))
+# grid.arrange(state_choropleth(education, title  = "Education Level in US", zoom = continental_us_states))
 ```
 
 ## population by density
@@ -172,22 +228,23 @@ pop_density_raw <- "https://simple.wikipedia.org/wiki/List_of_U.S._states_by_pop
 pop_density_raw
 
 pop_density <- pop_density_raw %>%
-  select(`State/Territory/Division/Region`,`2013 estimatedpopulation`,`Land area(sqmi)`,`Population/sqmi`)
+  select(`State/Territory/Division/Region`,`2013 estimatedpopulation`,`Land area(sqmi)`,`Population/sqmi`) %>%
+  arrange(`State/Territory/Division/Region`)
 
 # change column name 
-names(pop_density) <- c("state","population","land","density")
+names(pop_density) <- c("state","Population","Land","Density") 
 
 # delete the comma and numerical the colums
-pop_density$population <- as.numeric(gsub(",", "", pop_density$population))
-pop_density$land <- as.numeric(gsub(",", "", pop_density$land))
-pop_density$density <- as.numeric(gsub(",", "", pop_density$density))
+pop_density$Population <- as.numeric(gsub(",", "", pop_density$Population))
+pop_density$Land <- as.numeric(gsub(",", "", pop_density$Land))
+pop_density$Density <- as.numeric(gsub(",", "", pop_density$Density))
 
 # change state name to lower letter
 pop_density$state <- tolower(pop_density$state)
 
 # check density
 pop_density_check <- pop_density %>%
-  mutate(den = pop_density$population/pop_density$land)
+  mutate(den = pop_density$Population/pop_density$Land)
 
 head(pop_density)
 ```
@@ -203,11 +260,12 @@ GDP_raw <- "https://en.wikipedia.org/wiki/List_of_U.S._states_and_territories_by
 GDP_raw
 
 # change cols name 
-names(GDP_raw) <- c("rank","state","Q4_2019","GDP_portion","GDP_perCapita","area")
+names(GDP_raw) <- c("rank","state","Q4_2019","GDP_portion","GDP_perCapita","Area")
 
 # select the needed cols
 GDP <- GDP_raw %>%
-  select(state,Q4_2019,GDP_portion,GDP_perCapita,area)
+  select(state,Q4_2019,GDP_portion,GDP_perCapita,Area) %>%
+  arrange(state)
 
 # delete the comma and numerical the colums
 GDP$Q4_2019 <- as.numeric(gsub(",", "", GDP$Q4_2019))
@@ -223,12 +281,14 @@ head(GDP)
 ## Full Table
 
 ```{r}
-# political <- rbind(first_two,others) %>%
-
-df4 <- sqldf("SELECT CustomerId, Product, State 
-              FROM df1
-              LEFT JOIN df2 USING(CustomerID)")
-
-library
-merge(x = COVID_19_full, y = political, by =state, all.x = TRUE)
+# join tables COVID_19_full and political
+full1 <- left_join(COVID_19_full,political,by="state")
+full12 <- left_join(full1,political2,by="state")
+# join table education and filled NA (district of columbia) with 0
+full2 <- left_join(full1,education,by="state")
+full2$Education <- replace_na(full2$Education, 0)
+# join table pop_density
+full3 <- left_join(full2,pop_density,by="state")
+# join table pop_density
+full <- left_join(full3,GDP,by="state")
 ```
