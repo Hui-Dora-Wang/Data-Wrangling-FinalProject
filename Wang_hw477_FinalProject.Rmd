@@ -32,9 +32,11 @@ library(scales)   # for percent()
 library(ggplot2)
 ```
 
-## Covid-19
+## COVID-19, Political Standing, Education Level, Population Density, and GDP
 
-```{r Covid_19, echo = FALSE}
+Data Collection: scraping 5 tables from different websits
+
+```{r COVID-19, echo = FALSE}
 # import the data
 COVID_19_raw <- "https://www.worldometers.info/coronavirus/country/us/" %>%
   read_html() %>%
@@ -70,7 +72,7 @@ COVID_19$TotalDeaths <- replace_na(COVID_19$TotalDeaths, 0)
 # head(COVID_19)
 ```
 
-## Political Standing
+Data Cleaning: 4 tables, example as below (Political Standing table)
 
 ```{r Political Standing, echo = FALSE}
 # import the data
@@ -105,8 +107,6 @@ colnames(political) <- c("state","Clinton","Trump","Other_poli")
 head(political)
 ```
 
-## Education
-
 ```{r Education, echo = FALSE}
 # import the data
 education_raw <- "https://worldpopulationreview.com/states/most-educated-states/" %>%
@@ -128,8 +128,6 @@ education$state <- tolower(education$state)
 
 # head(education)
 ```
-
-## Population Density
 
 ```{r Population Density, echo = FALSE}
 # import the data
@@ -161,8 +159,6 @@ pop_density_check <- pop_density %>%
 # head(pop_density)
 ```
 
-## GDP
-
 ```{r GDP, echo = FALSE, warning=FALSE}
 # import the data
 GDP_raw <- "https://en.wikipedia.org/wiki/List_of_U.S._states_and_territories_by_GDP" %>%
@@ -191,6 +187,7 @@ GDP$state <- tolower(GDP$state)
 ```
 
 ## Full Table
+50 states and DC
 
 ```{r, echo = FALSE}
 # join tables COVID_19 and political
@@ -252,7 +249,7 @@ ggplot() +
   geom_point(data=Trump_Map, aes(x=`GDP_perCapita(log)`, y=`Deaths.1M.pop(log)`), color = "red", size=2) +
   geom_abline(intercept = -16.068, slope = 1.874, color = "blue") +
   geom_abline(intercept = 13.003, slope = -0.829, color = "red") +
-  ggtitle("COVID-19 Death, Political Standing Map, and GDP") +
+  ggtitle("COVID-19 Death, Political Standing, and GDP") +
   annotate("text", x = 12.25, y = 7, label = "Clinton", size=8, colour="blue") +
   annotate("text", x = 12.25, y = 3, label = "Trump", size=8, colour="red")
 
@@ -261,14 +258,14 @@ ggplot()+
   geom_point(data=Trump_Map, aes(x=`GDP_perCapita(log)`, y=`Cases.1M.pop(log)`), color = "red", size=2) +
   stat_function(fun = function(`GDP_perCapita(log)`) -10.1383 + 1.6179*`GDP_perCapita(log)`, data=Clinton_Map, color = "blue") +
   stat_function(fun = function(`GDP_perCapita(log)`) 1.886 + 0.502*`GDP_perCapita(log)`, data=Trump_Map, color = "red") +
-  ggtitle("COVID-19 Case, Political Standing Map, and GDP") +
+  ggtitle("COVID-19 Case, Political Standing, and GDP") +
   annotate("text", x = 12.2, y = 9.75, label = "Clinton", size=8, colour="blue") +
   annotate("text", x = 12.2, y = 8.2, label = "Trump", size=8, colour="red")
 ```
 
 ## Education & Political Standing
 
-```{r Education & Political Standing Map, echo = FALSE}
+```{r Education & Political Standing, echo = FALSE}
 # education for map
 education_ForMap <- full %>%
   dplyr::select(state, Education)
@@ -293,13 +290,16 @@ names(political_Trump_ForMap) <- c("region", "value")
 # create three side-by-side choropleth maps of Education & Political Standing in the USA
 data(continental_us_states)
 grid.arrange(state_choropleth(education_ForMap, title  = "Education Level in the US", zoom = continental_us_states))
-grid.arrange(state_choropleth(political_Clinton_ForMap, title  = "Vote for Clinton in 2016 in the US", zoom = continental_us_states))
-grid.arrange(state_choropleth(political_Trump_ForMap, title  = "Vote for Trump in 2016 in the US", zoom = continental_us_states))
+grid.arrange(state_choropleth(political_Clinton_ForMap, title  = "Vote for Clinton in 2016 in the US", zoom = continental_us_states),
+             state_choropleth(political_Trump_ForMap, title  = "Vote for Trump in 2016 in the US", zoom = continental_us_states))
 ```
 
-## Population Density, GDP, COVID-19
+## COVID-19, Population Density, and GDP
 
-```{r Population Density, GDP, COVID-19, echo = FALSE, warning=FALSE}
+delete the outlier (District of Columbia)
+
+```{r COVID-19, Population Density, and GDP, echo = FALSE, warning=FALSE}
+# delete the outlier 
 density_ForMap <- full %>%
   filter(state != "district of columbia") %>%
   dplyr::select(Density,GDP_perCapita,Deaths.1M.pop,Cases.1M.pop)
@@ -308,11 +308,11 @@ pairs(density_ForMap)
 
 ggplot(density_ForMap, aes(Density, Cases.1M.pop)) +
   geom_point() +
-  geom_smooth() +
-  ggtitle("COVID-19 Case & Population Density")
+  geom_smooth(method='lm', formula = y~x) +
+  ggtitle("COVID-19 Cases & Population Density")
 
 ggplot(density_ForMap, aes(GDP_perCapita, Cases.1M.pop)) +
   geom_point() +
-  geom_smooth() +
-  ggtitle("COVID-19 Case & GDP_perCapita")
+  geom_smooth(method='lm', formula = y~x) +
+  ggtitle("COVID-19 Cases & GDP_perCapita")
 ```
