@@ -244,14 +244,13 @@ reg4 <- lm(`Cases.1M.pop(log)` ~ `GDP_perCapita(log)`, data = Trump_Map)
 # summary(reg4)
 
 ggplot() +
-  #geom_abline(intercept = 8.388, slope = -0.829) + 
   geom_point(data=Clinton_Map, aes(x=`GDP_perCapita(log)`, y=`Deaths.1M.pop(log)`), color = "blue", size=2) +
   geom_point(data=Trump_Map, aes(x=`GDP_perCapita(log)`, y=`Deaths.1M.pop(log)`), color = "red", size=2) +
   geom_abline(intercept = -16.068, slope = 1.874, color = "blue") +
   geom_abline(intercept = 13.003, slope = -0.829, color = "red") +
   ggtitle("COVID-19 Death, Political Standing, and GDP") +
-  annotate("text", x = 12.25, y = 7, label = "Clinton", size=8, colour="blue") +
-  annotate("text", x = 12.25, y = 3, label = "Trump", size=8, colour="red")
+  annotate("text", x = 12.2, y = 7, label = "Clinton", size=8, colour="blue") +
+  annotate("text", x = 12.2, y = 3, label = "Trump", size=8, colour="red")
 
 ggplot()+
   geom_point(data=Clinton_Map, aes(x=`GDP_perCapita(log)`, y=`Cases.1M.pop(log)`), color = "blue", size=2) +
