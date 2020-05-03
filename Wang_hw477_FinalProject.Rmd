@@ -29,6 +29,7 @@ library(choroplethr)
 library(choroplethrMaps)
 library(sf)
 library(scales)   # for percent()
+library(ggplot2)
 ```
 
 ## Covid-19
@@ -82,11 +83,11 @@ head(political_raw)
 # select the needed columns
 # add the region names by hand, pay attendsion on such as district of colunmbia which in short is D.C. and stand after delaware, stand in front of it.
 political <- political_raw %>%
-  select(State,Clinton,Trump,Other) %>%
+  dplyr::select(State,Clinton,Trump,Other) %>%
   arrange(State) %>%
   unique() %>% 
   mutate(state = c("alabama","alaska","arizona","arkansas","california","colorado","connecticut","district of columbia","delaware","florida","georgia","hawaii","idaho","illinois","indiana","iowa","kansas","kentucky","louisiana","massachusetts","maryland","maine","michigan","minnesota","mississippi","missouri","montana","north carolina","north dakota","new hampshire","new jersey","new mexico","new york","nebraska","nevada","ohio","oklahoma","oregon","pennsylvania","rhode island","south carolina","south dakota","tennessee","texas","utah","virginia","vermont","west virginia","washington","wisconsin","wyoming")) %>%
-  select(state,Clinton,Trump,Other)
+  dplyr::select(state,Clinton,Trump,Other)
 
 # extracting the digit numbers and then divided by 100
 political$Clinton <- as.numeric(gsub("[^0-9]","",political$Clinton))/100
@@ -116,7 +117,7 @@ education_raw <- "https://worldpopulationreview.com/states/most-educated-states/
 
 # select the needed col
 education <- education_raw %>%
-  select(State,`Education Score`) %>%
+  dplyr::select(State,`Education Score`) %>%
   arrange(State)
 
 # change the clo names
@@ -139,7 +140,7 @@ pop_density_raw <- "https://simple.wikipedia.org/wiki/List_of_U.S._states_by_pop
 # head(pop_density_raw)
 
 pop_density <- pop_density_raw %>%
-  select(`State/Territory/Division/Region`,`2013 estimatedpopulation`,`Land area(sqmi)`,`Population/sqmi`) %>%
+  dplyr::select(`State/Territory/Division/Region`,`2013 estimatedpopulation`,`Land area(sqmi)`,`Population/sqmi`) %>%
   arrange(`State/Territory/Division/Region`)
 
 # change column name 
@@ -175,7 +176,7 @@ names(GDP_raw) <- c("rank","state","Q4_2019","GDP_portion","GDP_perCapita","Area
 
 # select the needed cols
 GDP <- GDP_raw %>%
-  select(state,Q4_2019,GDP_portion,GDP_perCapita,Area) %>%
+  dplyr::select(state,Q4_2019,GDP_portion,GDP_perCapita,Area) %>%
   arrange(state)
 
 # delete the comma and numerical the colums
@@ -207,15 +208,58 @@ head(full)
 write_csv(full, "COVID19-Pol-Edu-Pop-GDP.csv")
 ```
 
+## COVID-19, Political Standing, and GDP
 
-## COVID-19 Death, Political Standing Map, and GDP
+```{r COVID-19, Political Standing, and GDP, echo = FALSE}
+# select the needed columns
+# combine two Political Standing colums and define
+full_ForMap1 <- full %>%
+  dplyr::select(state,Cases.1M.pop,Deaths.1M.pop,Clinton,Trump,GDP_perCapita) %>%
+  mutate(Poli_standing = case_when(
+    Clinton > Trump ~ "Clinton",
+    Clinton < Trump ~ "Trump"))
 
-```{r COVID-19 Death, Political Standing Map, and GDP, echo = FALSE}
-ggplot(data=plot3, aes(x=prob, y=yhat)) +
-  geom_point(aes(color = model)) +
-  ggtitle("Probability of Being Low Birth Weight") + 
-  labs(y="Probability")
+# four states are very close
+# Trump got Michigan, Pennsylvania, Wisconsin; Clinton got New Hampshire
+full_ForMap1$Poli_standing <- replace_na(full_ForMap1$Poli_standing,"Trump")
+full_ForMap1$Poli_standing[30] <- "Clinton"
 
+# log transformation
+full_ForMap1$Deaths.1M.pop <- log(full_ForMap1$Deaths.1M.pop)
+full_ForMap1$Cases.1M.pop <- log(full_ForMap1$Cases.1M.pop)
+full_ForMap1$GDP_perCapita <- log(full_ForMap1$GDP_perCapita)
+
+Clinton_Map <- full_ForMap1 %>%
+  dplyr::select(state,Cases.1M.pop,Deaths.1M.pop,Poli_standing,GDP_perCapita) %>%
+  filter(Poli_standing=="Clinton")
+
+Trump_Map <- full_ForMap1 %>%
+  dplyr::select(state,Cases.1M.pop,Deaths.1M.pop,Poli_standing,GDP_perCapita) %>%
+  filter(Poli_standing=="Trump")
+
+reg1 <- lm(Deaths.1M.pop ~ GDP_perCapita, data = Clinton_Map)
+# summary(reg1)
+reg2 <- lm(Deaths.1M.pop ~ GDP_perCapita, data = Trump_Map)
+# summary(reg2)
+reg3 <- lm(Cases.1M.pop ~ GDP_perCapita, data = Clinton_Map)
+# summary(reg3)
+reg4 <- lm(Cases.1M.pop ~ GDP_perCapita, data = Trump_Map)
+# summary(reg4)
+
+ggplot() +
+  #geom_abline(intercept = 8.388, slope = -0.829) + 
+  geom_point(data=Clinton_Map, aes(x=GDP_perCapita, y=Deaths.1M.pop), color = "blue", size=2) +
+  geom_point(data=Trump_Map, aes(x=GDP_perCapita, y=Deaths.1M.pop), color = "red", size=2) +
+  geom_abline(intercept = -16.068, slope = 1.874, color = "blue") +
+  geom_abline(intercept = 13.003, slope = -0.829, color = "red") +
+  ggtitle("COVID-19 Death, Political Standing Map, and GDP") 
+
+ggplot()+
+  geom_point(data=Clinton_Map, aes(x=GDP_perCapita, y=Cases.1M.pop), color = "blue", size=2) +
+  geom_point(data=Trump_Map, aes(x=GDP_perCapita, y=Cases.1M.pop), color = "red", size=2) +
+  stat_function(fun = function(GDP_perCapita) -10.1383 + 1.6179*GDP_perCapita, data=Clinton_Map, color = "blue") +
+  stat_function(fun = function(GDP_perCapita) 1.886 + 0.502*GDP_perCapita, data=Trump_Map, color = "red") +
+  ggtitle("COVID-19 Case, Political Standing Map, and GDP")
 ```
 
 ## Education & Political Standing
@@ -223,35 +267,63 @@ ggplot(data=plot3, aes(x=prob, y=yhat)) +
 ```{r Education & Political Standing Map, echo = FALSE}
 # education for map
 education_ForMap <- full %>%
-  select(state, Education)
+  dplyr::select(state, Education)
 # match with choroplethr package
 # change columns' names
 names(education_ForMap) <- c("region", "value")
 
 # political standing in Clinton for map
 political_Clinton_ForMap <- full %>%
-  select(state, Clinton)
+  dplyr::select(state, Clinton)
 ## match with choroplethr package
 # change column name 
 names(political_Clinton_ForMap) <- c("region", "value")
 
 # political standing in Trump for map
 political_Trump_ForMap <- full %>%
-  select(state, Trump)
+  dplyr::select(state, Trump)
 ## match with choroplethr package
 # change column name 
 names(political_Trump_ForMap) <- c("region", "value")
 
 # create three side-by-side choropleth maps of Education & Political Standing in the USA
 data(continental_us_states)
-grid.arrange(state_choropleth(education_ForMap, title  = "Education Level in the US", zoom = continental_us_states),
-             state_choropleth(political_Clinton_ForMap, title  = "Vote for Clinton in 2016 in the US", zoom = continental_us_states),
-             state_choropleth(political_Trump_ForMap, title  = "Vote for Trump in 2016 in the US", zoom = continental_us_states))
+grid.arrange(state_choropleth(education_ForMap, title  = "Education Level in the US", zoom = continental_us_states))
+grid.arrange(state_choropleth(political_Clinton_ForMap, title  = "Vote for Clinton in 2016 in the US", zoom = continental_us_states))
+grid.arrange(state_choropleth(political_Trump_ForMap, title  = "Vote for Trump in 2016 in the US", zoom = continental_us_states))
 ```
 
 ## density, GDP, deaths
 
 ```{r COVID Death, Political Standing Map, and GDP, echo = FALSE}
 
+```
 
+```{r}
+# select the needed columns
+# combine two Political Standing colums and define
+full_ForMap123 <- full %>%
+  select(state,Deaths.1M.pop,Clinton,Trump,GDP_perCapita) %>%
+  mutate(Poli_standing = case_when(
+    Clinton > Trump ~ "Clinton",
+    Clinton < Trump ~ "Trump"))
+
+# four states are very close
+# Trump got Michigan, Pennsylvania, Wisconsin; Clinton got New Hampshire
+full_ForMap123$Poli_standing <- replace_na(full_ForMap123$Poli_standing,"Trump")
+full_ForMap123$Poli_standing[30] <- "Clinton"
+
+# log transformation
+full_ForMap123$Deaths.1M.pop <- log(full_ForMap123$Deaths.1M.pop)
+full_ForMap123$GDP_perCapita <- log(full_ForMap123$GDP_perCapita)
+
+full_ForMap1234 <- data.frame(rep(full_ForMap123$state, times=2))
+full_ForMap1234$Deaths.1M.pop[1:51] <-full_ForMap123$Deaths.1M.pop
+full_ForMap1234$Deaths.1M.pop[52:102] <-full_ForMap123$Deaths.1M.pop
+full_ForMap1234$GDP_perCapita[1:51] <-full_ForMap123$GDP_perCapita
+full_ForMap1234$GDP_perCapita[52:102] <-full_ForMap123$GDP_perCapita
+full_ForMap1234$Poli_type[1:51] <-full_ForMap123$Poli_standing
+full_ForMap1234$Poli_type[52:102] <-full_ForMap123$Poli_standing
+full_ForMap1234$Poli_vote[1:51] <-full_ForMap123$Clinton
+full_ForMap1234$Poli_vote[52:102] <-full_ForMap123$Trump
 ```
