@@ -225,41 +225,45 @@ full_ForMap1$Poli_standing <- replace_na(full_ForMap1$Poli_standing,"Trump")
 full_ForMap1$Poli_standing[30] <- "Clinton"
 
 # log transformation
-full_ForMap1$Deaths.1M.pop <- log(full_ForMap1$Deaths.1M.pop)
-full_ForMap1$Cases.1M.pop <- log(full_ForMap1$Cases.1M.pop)
-full_ForMap1$GDP_perCapita <- log(full_ForMap1$GDP_perCapita)
+full_ForMap1$`Deaths.1M.pop(log)` <- log(full_ForMap1$Deaths.1M.pop)
+full_ForMap1$`Cases.1M.pop(log)` <- log(full_ForMap1$Cases.1M.pop)
+full_ForMap1$`GDP_perCapita(log)` <- log(full_ForMap1$GDP_perCapita)
 
 Clinton_Map <- full_ForMap1 %>%
-  dplyr::select(state,Cases.1M.pop,Deaths.1M.pop,Poli_standing,GDP_perCapita) %>%
+  dplyr::select(state,`Cases.1M.pop(log)`,`Deaths.1M.pop(log)`,Poli_standing,`GDP_perCapita(log)`) %>%
   filter(Poli_standing=="Clinton")
 
 Trump_Map <- full_ForMap1 %>%
-  dplyr::select(state,Cases.1M.pop,Deaths.1M.pop,Poli_standing,GDP_perCapita) %>%
+  dplyr::select(state,`Cases.1M.pop(log)`,`Deaths.1M.pop(log)`,Poli_standing,`GDP_perCapita(log)`) %>%
   filter(Poli_standing=="Trump")
 
-reg1 <- lm(Deaths.1M.pop ~ GDP_perCapita, data = Clinton_Map)
+reg1 <- lm(`Deaths.1M.pop(log)` ~ `GDP_perCapita(log)`, data = Clinton_Map)
 # summary(reg1)
-reg2 <- lm(Deaths.1M.pop ~ GDP_perCapita, data = Trump_Map)
+reg2 <- lm(`Deaths.1M.pop(log)` ~ `GDP_perCapita(log)`, data = Trump_Map)
 # summary(reg2)
-reg3 <- lm(Cases.1M.pop ~ GDP_perCapita, data = Clinton_Map)
+reg3 <- lm(`Cases.1M.pop(log)` ~ `GDP_perCapita(log)`, data = Clinton_Map)
 # summary(reg3)
-reg4 <- lm(Cases.1M.pop ~ GDP_perCapita, data = Trump_Map)
+reg4 <- lm(`Cases.1M.pop(log)` ~ `GDP_perCapita(log)`, data = Trump_Map)
 # summary(reg4)
 
 ggplot() +
   #geom_abline(intercept = 8.388, slope = -0.829) + 
-  geom_point(data=Clinton_Map, aes(x=GDP_perCapita, y=Deaths.1M.pop), color = "blue", size=2) +
-  geom_point(data=Trump_Map, aes(x=GDP_perCapita, y=Deaths.1M.pop), color = "red", size=2) +
+  geom_point(data=Clinton_Map, aes(x=`GDP_perCapita(log)`, y=`Deaths.1M.pop(log)`), color = "blue", size=2) +
+  geom_point(data=Trump_Map, aes(x=`GDP_perCapita(log)`, y=`Deaths.1M.pop(log)`), color = "red", size=2) +
   geom_abline(intercept = -16.068, slope = 1.874, color = "blue") +
   geom_abline(intercept = 13.003, slope = -0.829, color = "red") +
-  ggtitle("COVID-19 Death, Political Standing Map, and GDP") 
+  ggtitle("COVID-19 Death, Political Standing Map, and GDP") +
+  annotate("text", x = 12.25, y = 7, label = "Clinton", size=8, colour="blue") +
+  annotate("text", x = 12.25, y = 3, label = "Trump", size=8, colour="red")
 
 ggplot()+
-  geom_point(data=Clinton_Map, aes(x=GDP_perCapita, y=Cases.1M.pop), color = "blue", size=2) +
-  geom_point(data=Trump_Map, aes(x=GDP_perCapita, y=Cases.1M.pop), color = "red", size=2) +
-  stat_function(fun = function(GDP_perCapita) -10.1383 + 1.6179*GDP_perCapita, data=Clinton_Map, color = "blue") +
-  stat_function(fun = function(GDP_perCapita) 1.886 + 0.502*GDP_perCapita, data=Trump_Map, color = "red") +
-  ggtitle("COVID-19 Case, Political Standing Map, and GDP")
+  geom_point(data=Clinton_Map, aes(x=`GDP_perCapita(log)`, y=`Cases.1M.pop(log)`), color = "blue", size=2) +
+  geom_point(data=Trump_Map, aes(x=`GDP_perCapita(log)`, y=`Cases.1M.pop(log)`), color = "red", size=2) +
+  stat_function(fun = function(`GDP_perCapita(log)`) -10.1383 + 1.6179*`GDP_perCapita(log)`, data=Clinton_Map, color = "blue") +
+  stat_function(fun = function(`GDP_perCapita(log)`) 1.886 + 0.502*`GDP_perCapita(log)`, data=Trump_Map, color = "red") +
+  ggtitle("COVID-19 Case, Political Standing Map, and GDP") +
+  annotate("text", x = 12.2, y = 9.75, label = "Clinton", size=8, colour="blue") +
+  annotate("text", x = 12.2, y = 8.2, label = "Trump", size=8, colour="red")
 ```
 
 ## Education & Political Standing
@@ -293,37 +297,22 @@ grid.arrange(state_choropleth(political_Clinton_ForMap, title  = "Vote for Clint
 grid.arrange(state_choropleth(political_Trump_ForMap, title  = "Vote for Trump in 2016 in the US", zoom = continental_us_states))
 ```
 
-## density, GDP, deaths
+## Population Density, GDP, COVID-19
 
-```{r COVID Death, Political Standing Map, and GDP, echo = FALSE}
+```{r Population Density, GDP, COVID-19, echo = FALSE, warning=FALSE}
+density_ForMap <- full %>%
+  filter(state != "district of columbia") %>%
+  dplyr::select(Density,GDP_perCapita,Deaths.1M.pop,Cases.1M.pop)
 
-```
+pairs(density_ForMap)
 
-```{r}
-# select the needed columns
-# combine two Political Standing colums and define
-full_ForMap123 <- full %>%
-  select(state,Deaths.1M.pop,Clinton,Trump,GDP_perCapita) %>%
-  mutate(Poli_standing = case_when(
-    Clinton > Trump ~ "Clinton",
-    Clinton < Trump ~ "Trump"))
+ggplot(density_ForMap, aes(Density, Cases.1M.pop)) +
+  geom_point() +
+  geom_smooth() +
+  ggtitle("COVID-19 Case & Population Density")
 
-# four states are very close
-# Trump got Michigan, Pennsylvania, Wisconsin; Clinton got New Hampshire
-full_ForMap123$Poli_standing <- replace_na(full_ForMap123$Poli_standing,"Trump")
-full_ForMap123$Poli_standing[30] <- "Clinton"
-
-# log transformation
-full_ForMap123$Deaths.1M.pop <- log(full_ForMap123$Deaths.1M.pop)
-full_ForMap123$GDP_perCapita <- log(full_ForMap123$GDP_perCapita)
-
-full_ForMap1234 <- data.frame(rep(full_ForMap123$state, times=2))
-full_ForMap1234$Deaths.1M.pop[1:51] <-full_ForMap123$Deaths.1M.pop
-full_ForMap1234$Deaths.1M.pop[52:102] <-full_ForMap123$Deaths.1M.pop
-full_ForMap1234$GDP_perCapita[1:51] <-full_ForMap123$GDP_perCapita
-full_ForMap1234$GDP_perCapita[52:102] <-full_ForMap123$GDP_perCapita
-full_ForMap1234$Poli_type[1:51] <-full_ForMap123$Poli_standing
-full_ForMap1234$Poli_type[52:102] <-full_ForMap123$Poli_standing
-full_ForMap1234$Poli_vote[1:51] <-full_ForMap123$Clinton
-full_ForMap1234$Poli_vote[52:102] <-full_ForMap123$Trump
+ggplot(density_ForMap, aes(GDP_perCapita, Cases.1M.pop)) +
+  geom_point() +
+  geom_smooth() +
+  ggtitle("COVID-19 Case & GDP_perCapita")
 ```
